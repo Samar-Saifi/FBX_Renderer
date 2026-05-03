@@ -10,6 +10,10 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 CMakeUserPresets.json
+cmake-build-debug/
+imgui.ini
+fbx_renderer
+
 
 # CLion
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
