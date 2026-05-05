@@ -75,6 +75,8 @@ add_executable(fbx_renderer
         src/main.cpp
         src/mesh.cpp
         src/mesh.h
+        src/Camera.cpp
+        src/Camera.h
 )
 
 set_target_properties(fbx_renderer PROPERTIES

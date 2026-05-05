@@ -7,13 +7,43 @@
 #include <filesystem>
 #include <fstream>
 
+#include "Camera.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include "mesh.h"
 #include "glm/gtc/matrix_transform.hpp"
 
+
+Camera camera;
+bool   lmbHeld  = false;
+double lastX    = 0.0;
+double lastY    = 0.0;
+int    winWidth  = 1280;
+int    winHeight = 720;
 std::string modelPath;
+
+void OnLmbClicked(GLFWwindow* window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        lmbHeld = (action == GLFW_PRESS);
+    }
+}
+
+void OnCursorMove(GLFWwindow* window, double x, double y) {
+    float newX = x - lastX;
+    float newY = y - lastY;
+    lastX = x; lastY = y;
+
+    std::cout << "X: " << newX << " Y: " << newY << std::endl;
+
+    if (lmbHeld) {
+        camera.RotateCamera(newX, newY);
+    }
+}
+
+void OnMouseScroll(GLFWwindow* window, double xOffset, double yOffset) {
+    camera.ZoomCamera((float)yOffset);
+}
 
 std::string SelectFileFromExplorer() {
     NFD::UniquePath selectedPath;
@@ -110,6 +140,9 @@ int main() {
     }
 
     glfwMakeContextCurrent(window);
+    glfwSetMouseButtonCallback(window, OnLmbClicked);
+    glfwSetCursorPosCallback(window, OnCursorMove);
+    glfwSetScrollCallback(window, OnMouseScroll);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         std::cout << "Failed to init GLAD" << std::endl;
@@ -132,8 +165,13 @@ int main() {
     Mesh mesh;
     bool meshLoaded = false;
 
-    glm::mat4 model = glm::mat4(1.0f);;
-    model = glm::scale(glm::mat4(1.0f), glm::vec3(2.0f));
+    glm::vec3 center  = (mesh.boundsMin + mesh.boundsMax) * 0.5f;
+    glm::vec3 extents =  mesh.boundsMax - mesh.boundsMin;
+    float     maxDim  = std::max({extents.x, extents.y, extents.z});
+    float     scale   = (maxDim > 0.0001f) ? 2.0f / maxDim : 1.0f;
+
+    glm::mat4 modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(scale)) * glm::translate(glm::mat4(1.0f), -center);
+    glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(modelMatrix)));
 
     std::string vertSrc = readFile("shaders/vert.shader");
     std::string fragSrc = readFile("shaders/frag.shader");
@@ -165,11 +203,12 @@ int main() {
             }
         }
 
-
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
             glfwSetWindowShouldClose(window, true);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        float aspect = (winHeight > 0)? (float)w / (float)h : 1.0f;
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -179,24 +218,15 @@ int main() {
             int w, h;
             glfwGetFramebufferSize(window, &w, &h);
 
-            glm::mat4 view = glm::lookAt(
-                glm::vec3(0.0f, 0.0f, 3.0f),  // camera
-                glm::vec3(0.0f, 0.0f, 0.0f),  // target
-                glm::vec3(0.0f, 1.0f, 0.0f)   // up
-            );
+            glm::mat4 view = camera.getViewMatrix();
 
-            glm::mat4 projection = glm::perspective(
-                glm::radians(45.0f),
-                (float)w / (float)h,
-                0.1f,
-                100.0f
-            );
+            glm::mat4 projection = camera.getProjectionMatrix(aspect);
 
             GLuint modelLoc = glGetUniformLocation(progID, "model");
             GLuint viewLoc  = glGetUniformLocation(progID, "view");
             GLuint projLoc  = glGetUniformLocation(progID, "projection");
 
-            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &model[0][0]);
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &modelMatrix[0][0]);
             glUniformMatrix4fv(viewLoc,  1, GL_FALSE, &view[0][0]);
             glUniformMatrix4fv(projLoc,  1, GL_FALSE, &projection[0][0]);
 
