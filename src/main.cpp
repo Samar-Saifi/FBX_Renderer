@@ -34,8 +34,6 @@ void OnCursorMove(GLFWwindow* window, double x, double y) {
     float newY = y - lastY;
     lastX = x; lastY = y;
 
-    std::cout << "X: " << newX << " Y: " << newY << std::endl;
-
     if (lmbHeld) {
         camera.RotateCamera(newX, newY);
     }
@@ -122,6 +120,25 @@ static unsigned int compileShader(GLenum type, const char* src) {
         std::cout << "ERROR compiling " << ":\n" << log << std::endl;
     }
     return shader;
+}
+
+void DrawMesh(const Mesh& mesh, bool isWireframe, GLuint wireframeLoc) {
+    glPolygonMode(GL_FRONT_AND_BACK, isWireframe ? GL_LINE : GL_FILL);
+
+    if (!isWireframe) {
+        glEnable(GL_POLYGON_OFFSET_FILL);
+        glPolygonOffset(2.0f, 2.0f);
+    } else {
+        glDisable(GL_POLYGON_OFFSET_FILL);
+    }
+
+    glUniform1i(wireframeLoc, isWireframe);
+    mesh.draw();
+
+    if (!isWireframe)
+        glDisable(GL_POLYGON_OFFSET_FILL);
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
 int main() {
@@ -225,12 +242,14 @@ int main() {
             GLuint modelLoc = glGetUniformLocation(progID, "model");
             GLuint viewLoc  = glGetUniformLocation(progID, "view");
             GLuint projLoc  = glGetUniformLocation(progID, "projection");
+            GLuint wireframe = glGetUniformLocation(progID, "wireframe");
 
             glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &modelMatrix[0][0]);
             glUniformMatrix4fv(viewLoc,  1, GL_FALSE, &view[0][0]);
             glUniformMatrix4fv(projLoc,  1, GL_FALSE, &projection[0][0]);
 
-            mesh.draw();
+            DrawMesh(mesh, false, wireframe);
+            DrawMesh(mesh, true, wireframe);
         }
 
         glfwSwapBuffers(window);

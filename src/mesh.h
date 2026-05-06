@@ -13,7 +13,7 @@ struct Vertex {
 class Mesh {
 public:
     bool loadFromFile(const std::string& path);
-    void draw();
+    void draw() const;
     glm::vec3 boundsMin;
     glm::vec3 boundsMax;
     ~Mesh();

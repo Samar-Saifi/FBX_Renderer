@@ -115,12 +115,11 @@ void Mesh::uploadMesh(const std::vector<Vertex>& verts,
 }
 
 
-void Mesh::draw() {
+void Mesh::draw() const {
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
 }
-
 
 Mesh::~Mesh() {
     glDeleteVertexArrays(1, &VAO);
