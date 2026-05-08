@@ -8,8 +8,40 @@
 #include <limits>
 #include <vector>
 
+static void FindAndProcessMeshes(aiNode* node, const aiScene* scene, std::vector<std::vector<Vertex>>& outVertices, std::vector<std::vector<unsigned int>>& outIndices) {
+    for (unsigned int i = 0; i < node->mNumMeshes; i++) {
+        aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
 
-bool Mesh::loadFromFile(const std::string& path) {
+        std::vector<Vertex> vertices;
+        std::vector<unsigned int> indices;
+
+        for (unsigned int j = 0; j < mesh->mNumVertices; j++) {
+            Vertex v;
+            v.position = glm::vec3(mesh->mVertices[j].x, mesh->mVertices[j].y, mesh->mVertices[j].z);
+            if (mesh->HasNormals()) {
+                v.normal = glm::vec3(mesh->mNormals[j].x, mesh->mNormals[j].y, mesh->mNormals[j].z);
+            }else {
+                v.normal = glm::vec3(0.0f, 1.0f, 0.0f);
+            }
+            vertices.push_back(v);
+        }
+
+        for (unsigned int j = 0; j < mesh->mNumFaces; j++) {
+            aiFace face = mesh->mFaces[j];
+            for (unsigned int k = 0; k < face.mNumIndices; k++) {
+                indices.push_back(face.mIndices[k]);
+            }
+        }
+
+        outVertices.push_back(vertices);
+        outIndices.push_back(indices);
+    }
+
+    for (unsigned int i = 0; i < node->mNumChildren; i++)
+        FindAndProcessMeshes(node->mChildren[i], scene, outVertices, outIndices);
+}
+
+bool Mesh::LoadFromFile(const std::string& path) {
     Assimp::Importer importer;
 
     const aiScene* scene = importer.ReadFile(path,
@@ -28,75 +60,38 @@ bool Mesh::loadFromFile(const std::string& path) {
         return false;
     }
 
-    aiMesh* mesh = scene->mMeshes[0];
+    std::vector <std::vector<Vertex>> allVertices;
+    std::vector <std::vector<unsigned int>> allIndices;
+    FindAndProcessMeshes(scene->mRootNode, scene, allVertices, allIndices);
 
-    std::vector<Vertex> verts;
-    std::vector<unsigned int> indices;
-
-    for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
-        Vertex v;
-
-        v.position = glm::vec3(
-            mesh->mVertices[i].x,
-            mesh->mVertices[i].y,
-            mesh->mVertices[i].z
-        );
-
-        if (mesh->HasNormals()) {
-            v.normal = glm::vec3(
-                mesh->mNormals[i].x,
-                mesh->mNormals[i].y,
-                mesh->mNormals[i].z
-            );
-        } else {
-            v.normal = glm::vec3(0.0f, 1.0f, 0.0f);
-        }
-
-        verts.push_back(v);
+    for (int i = 0; i < allVertices.size(); i++) {
+        UploadMesh(allVertices[i], allIndices[i]);
     }
-
-    for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
-        aiFace& face = mesh->mFaces[i];
-        for (unsigned int j = 0; j < face.mNumIndices; j++) {
-            indices.push_back(face.mIndices[j]);
-        }
-    }
-
-    uploadMesh(verts, indices);
-
-    boundsMin = glm::vec3(std::numeric_limits<float>::max());
-    boundsMax = glm::vec3(-std::numeric_limits<float>::max());
-
-    for (const auto& v : verts) {
-        boundsMin = glm::min(boundsMin, v.position);
-        boundsMax = glm::max(boundsMax, v.position);
-    }
-
-    std::cout << "Loaded (first mesh only): " << path << std::endl;
-    std::cout << "  vertices: " << verts.size()
-              << "  triangles: " << indices.size() / 3 << std::endl;
 
     return true;
 }
 
-void Mesh::uploadMesh(const std::vector<Vertex>& verts,
+void Mesh::UploadMesh(const std::vector<Vertex>& verts,
                       const std::vector<unsigned int>& indices)
 {
-    indexCount = (unsigned int)indices.size();
 
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
+    Buffers buffers;
 
-    glBindVertexArray(VAO);
+    buffers.indexCount = (unsigned int)indices.size();
 
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glGenVertexArrays(1, &buffers.VAO);
+    glGenBuffers(1, &buffers.VBO);
+    glGenBuffers(1, &buffers.EBO);
+
+    glBindVertexArray(buffers.VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, buffers.VBO);
     glBufferData(GL_ARRAY_BUFFER,
                  verts.size() * sizeof(Vertex),
                  verts.data(),
                  GL_STATIC_DRAW);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffers.EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER,
                  indices.size() * sizeof(unsigned int),
                  indices.data(),
@@ -112,17 +107,23 @@ void Mesh::uploadMesh(const std::vector<Vertex>& verts,
     glEnableVertexAttribArray(1);
 
     glBindVertexArray(0);
+
+    buffersList.push_back(buffers);
 }
 
 
 void Mesh::draw() const {
-    glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
+    for (auto& b : buffersList) {
+        glBindVertexArray(b.VAO);
+        glDrawElements(GL_TRIANGLES, b.indexCount, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
+    }
 }
 
 Mesh::~Mesh() {
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
+    for (auto& b : buffersList) {
+        glDeleteVertexArrays(1, &b.VAO);
+        glDeleteBuffers(1, &b.VBO);
+        glDeleteBuffers(1, &b.EBO);
+    }
 }

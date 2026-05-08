@@ -212,7 +212,7 @@ int main() {
         glViewport(0, 0, w, h);
 
         if (!modelPath.empty() && !meshLoaded) {
-            if (mesh.loadFromFile(modelPath)) {
+            if (mesh.LoadFromFile(modelPath)) {
                 meshLoaded = true;
             } else {
                 std::cout << "Failed to load mesh.\n";

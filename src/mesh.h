@@ -10,18 +10,22 @@ struct Vertex {
     glm::vec3 normal;
 };
 
+struct Buffers {
+    unsigned int VAO, VBO, EBO;
+    unsigned int indexCount;
+};
+
 class Mesh {
 public:
-    bool loadFromFile(const std::string& path);
-    void draw() const;
     glm::vec3 boundsMin;
     glm::vec3 boundsMax;
+    std::vector<Buffers> buffersList;
+    bool LoadFromFile(const std::string& path);
+    void draw() const;
     ~Mesh();
 
 private:
-    unsigned int VAO, VBO, EBO;
-    unsigned int indexCount;
-    void uploadMesh(const std::vector<Vertex>& verts, const std::vector<unsigned int>& indices);
+    void UploadMesh(const std::vector<Vertex>& verts, const std::vector<unsigned int>& indices);
 };
 
 #endif //FBXRENDERER_MESH_H
