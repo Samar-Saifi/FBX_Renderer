@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <iostream>
+#include <sstream>
 #include <nfd.hpp>
 #include <algorithm>
 #include <filesystem>

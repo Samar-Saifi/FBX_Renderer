@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+﻿cmake_minimum_required(VERSION 3.16)
 project(Renderer)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -34,10 +34,11 @@ FetchContent_Declare(assimp
 set(ASSIMP_BUILD_TESTS          OFF CACHE BOOL "" FORCE)
 set(ASSIMP_INSTALL              OFF CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
-# only enable the formats we actually need
 set(ASSIMP_BUILD_FBX_IMPORTER   ON  CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_OBJ_IMPORTER   ON  CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_GLTF_IMPORTER  ON  CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ALL_EXPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
+set(ASSIMP_NO_EXPORT ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(assimp)
 
 
@@ -79,10 +80,6 @@ add_executable(fbx_renderer
         src/Camera.h
 )
 
-set_target_properties(fbx_renderer PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}
-)
-
 target_include_directories(fbx_renderer PRIVATE src)
 
 target_link_libraries(fbx_renderer PRIVATE
@@ -96,4 +93,10 @@ target_link_libraries(fbx_renderer PRIVATE
 )
 
 target_link_libraries(imgui PUBLIC glfw)
+
+set_target_properties(fbx_renderer PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_SOURCE_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_SOURCE_DIR}"
+)
 
