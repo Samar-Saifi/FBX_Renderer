@@ -20,6 +20,9 @@ public:
     glm::vec3 boundsMin;
     glm::vec3 boundsMax;
     std::vector<Buffers> buffersList;
+    unsigned int totalVertices = 0;
+    unsigned int totalPolygons = 0;
+
     bool LoadFromFile(const std::string& path);
     void draw() const;
     ~Mesh();

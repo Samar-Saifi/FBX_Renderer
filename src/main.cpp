@@ -66,7 +66,42 @@ std::string SelectFileFromExplorer() {
     return "";
 }
 
-void ImguiRenderLoop() {
+void RenderStatsOverlay(const Mesh& mesh, float currentFps) {
+    ImGuiIO& io = ImGui::GetIO();
+
+    float padding = 10.0f;
+    ImVec2 windowPos = ImVec2(io.DisplaySize.x - padding, padding);
+    ImVec2 windowPosPivot = ImVec2(1.0f, 0.0f);
+
+    ImGui::SetNextWindowPos(windowPos, ImGuiCond_Always, windowPosPivot);
+    ImGui::SetNextWindowBgAlpha(0.35f);
+
+    ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration |
+                                   ImGuiWindowFlags_AlwaysAutoResize |
+                                   ImGuiWindowFlags_NoSavedSettings |
+                                   ImGuiWindowFlags_NoFocusOnAppearing |
+                                   ImGuiWindowFlags_NoNav |
+                                   ImGuiWindowFlags_NoMove;
+
+    ImGui::Begin("Stats", nullptr, windowFlags);
+
+    ImGui::Text("Scene stats");
+    ImGui::Separator();
+
+    ImGui::Text("Vertices: %u", mesh.totalVertices);
+    ImGui::Text("Polygons: %u", mesh.totalPolygons);
+
+    ImGui::Separator();
+    ImGui::Text("Performance");
+    ImGui::Separator();
+
+    ImGui::Text("Application FPS: %.1f", currentFps);
+    ImGui::Text("Frame Time: %.3f ms", 1000.0f / currentFps);
+
+    ImGui::End();
+}
+
+void ImguiRenderLoop(const Mesh& mesh) {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
@@ -92,6 +127,9 @@ void ImguiRenderLoop() {
 
         std::cout << "FBX file selected: " << modelPath << std::endl;
     }
+
+    float currentFps = ImGui::GetIO().Framerate;
+    RenderStatsOverlay(mesh, currentFps);
 
     ImGui::End();
     ImGui::Render();
@@ -206,7 +244,7 @@ int main() {
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
-        ImguiRenderLoop();
+        ImguiRenderLoop(mesh);
 
         int w, h;
         glfwGetFramebufferSize(window, &w, &h);

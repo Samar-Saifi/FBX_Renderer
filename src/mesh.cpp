@@ -5,7 +5,6 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <iostream>
-#include <limits>
 #include <vector>
 
 static void FindAndProcessMeshes(aiNode* node, const aiScene* scene, std::vector<std::vector<Vertex>>& outVertices, std::vector<std::vector<unsigned int>>& outIndices) {
@@ -78,6 +77,8 @@ void Mesh::UploadMesh(const std::vector<Vertex>& verts,
     Buffers buffers;
 
     buffers.indexCount = (unsigned int)indices.size();
+    totalVertices += (unsigned int)verts.size();
+    totalPolygons += (unsigned int)(indices.size() / 3);
 
     glGenVertexArrays(1, &buffers.VAO);
     glGenBuffers(1, &buffers.VBO);
