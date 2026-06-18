@@ -13,6 +13,9 @@ A lightweight 3D asset visualizer built with C++17 and OpenGL 3.3 Core Profile. 
 
 
 * **Exit:** Press the ESCAPE key at any point to terminate processes safely.
+  
+
+  <img width="1917" height="1150" alt="image" src="https://github.com/user-attachments/assets/7da2d57e-3726-4626-be6f-97f9c8b3c669" />
 
 ## Architecture
 
