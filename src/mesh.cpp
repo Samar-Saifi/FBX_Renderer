@@ -62,13 +62,38 @@ bool Mesh::LoadFromFile(const std::string& path) {
     std::vector <std::vector<Vertex>> allVertices;
     std::vector <std::vector<unsigned int>> allIndices;
     FindAndProcessMeshes(scene->mRootNode, scene, allVertices, allIndices);
+    Clear();
 
     for (int i = 0; i < allVertices.size(); i++) {
+        ExpandBounds(allVertices[i]);
         UploadMesh(allVertices[i], allIndices[i]);
     }
 
     return true;
 }
+
+void Mesh::ExpandBounds(const std::vector<Vertex>& verts) {
+    for (const auto& v : verts) {
+        boundsMin = glm::min(boundsMin, v.position);
+        boundsMax = glm::max(boundsMax, v.position);
+    }
+}
+ 
+void Mesh::Clear() {
+    for (auto& b : buffersList) {
+        glDeleteVertexArrays(1, &b.VAO);
+        glDeleteBuffers(1, &b.VBO);
+        glDeleteBuffers(1, &b.EBO);
+    }
+    buffersList.clear();
+ 
+    totalVertices = 0;
+    totalPolygons = 0;
+ 
+    boundsMin = glm::vec3(std::numeric_limits<float>::max());
+    boundsMax = glm::vec3(std::numeric_limits<float>::lowest());
+}
+
 
 void Mesh::UploadMesh(const std::vector<Vertex>& verts,
                       const std::vector<unsigned int>& indices)
@@ -122,9 +147,5 @@ void Mesh::draw() const {
 }
 
 Mesh::~Mesh() {
-    for (auto& b : buffersList) {
-        glDeleteVertexArrays(1, &b.VAO);
-        glDeleteBuffers(1, &b.VBO);
-        glDeleteBuffers(1, &b.EBO);
-    }
+    Clear();
 }

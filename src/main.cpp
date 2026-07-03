@@ -20,8 +20,7 @@ Camera camera;
 bool   lmbHeld  = false;
 double lastX    = 0.0;
 double lastY    = 0.0;
-int    winWidth  = 1280;
-int    winHeight = 720;
+bool   meshLoadRequested = false; 
 std::string modelPath;
 
 void OnLmbClicked(GLFWwindow* window, int button, int action, int mods) {
@@ -123,7 +122,10 @@ void ImguiRenderLoop(const Mesh& mesh) {
         if (ext != ".fbx") {
             modelPath = "";
             std::cout << "Please select an FBX file." << std::endl;
+        }else {
+            meshLoadRequested = true;
         }
+
 
         std::cout << "FBX file selected: " << modelPath << std::endl;
     }
@@ -221,13 +223,8 @@ int main() {
     Mesh mesh;
     bool meshLoaded = false;
 
-    glm::vec3 center  = (mesh.boundsMin + mesh.boundsMax) * 0.5f;
-    glm::vec3 extents =  mesh.boundsMax - mesh.boundsMin;
-    float     maxDim  = std::max({extents.x, extents.y, extents.z});
-    float     scale   = (maxDim > 0.0001f) ? 2.0f / maxDim : 1.0f;
-
-    glm::mat4 modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(scale)) * glm::translate(glm::mat4(1.0f), -center);
-    glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(modelMatrix)));
+    glm::mat4 modelMatrix(1.0f);
+    glm::mat3 normalMatrix = glm::mat3(1.0f);
 
     std::string vertSrc = readFile("shaders/vert.shader");
     std::string fragSrc = readFile("shaders/frag.shader");
@@ -240,6 +237,25 @@ int main() {
     glAttachShader(progID, frag);
     glLinkProgram(progID);
 
+    int linkSuccess;
+    glGetProgramiv(progID, GL_LINK_STATUS, &linkSuccess);
+    if (!linkSuccess){
+        char log[512];
+        glGetProgramInfoLog(progID, 512, NULL, log);
+        std::cout << "ERROR linking shader program:\n" << log << std::endl;
+    }
+
+    glDeleteShader(vert);
+    glDeleteShader(frag);
+ 
+    
+    GLuint modelLoc = glGetUniformLocation(progID, "model");
+    GLuint viewLoc = glGetUniformLocation(progID, "view");
+    GLuint projLoc = glGetUniformLocation(progID, "projection");
+    GLuint normalMatLoc = glGetUniformLocation(progID, "normalMatrix");
+    GLuint wireframeLoc = glGetUniformLocation(progID, "wireframe");
+    GLuint lightDirLoc = glGetUniformLocation(progID, "lightDir");
+
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -250,9 +266,18 @@ int main() {
         glfwGetFramebufferSize(window, &w, &h);
         glViewport(0, 0, w, h);
 
-        if (!modelPath.empty() && !meshLoaded) {
+        if (!modelPath.empty() && meshLoadRequested) {
+            meshLoadRequested = false;
             if (mesh.LoadFromFile(modelPath)) {
                 meshLoaded = true;
+                glm::vec3 center = (mesh.boundsMin + mesh.boundsMax) * 0.5f;
+                glm::vec3 extents =  mesh.boundsMax - mesh.boundsMin;
+                float maxDim = std::max({extents.x, extents.y, extents.z});
+                float scale = (maxDim > 0.0001f) ? 2.0f / maxDim : 1.0f;
+ 
+                modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(scale)) * glm::translate(glm::mat4(1.0f), -center);
+                normalMatrix = glm::mat3(glm::transpose(glm::inverse(modelMatrix)));
+
             } else {
                 std::cout << "Failed to load mesh.\n";
                 modelPath = "";
@@ -264,7 +289,7 @@ int main() {
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        float aspect = (winHeight > 0)? (float)w / (float)h : 1.0f;
+        float aspect = (h > 0)? (float)w / (float)h : 1.0f;
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -278,17 +303,16 @@ int main() {
 
             glm::mat4 projection = camera.getProjectionMatrix(aspect);
 
-            GLuint modelLoc = glGetUniformLocation(progID, "model");
-            GLuint viewLoc  = glGetUniformLocation(progID, "view");
-            GLuint projLoc  = glGetUniformLocation(progID, "projection");
-            GLuint wireframe = glGetUniformLocation(progID, "wireframe");
+            glm::vec3 lightDir = glm::normalize(glm::vec3(0.4f, 0.8f, 0.6f)); 
 
             glUniformMatrix4fv(modelLoc, 1, GL_FALSE, &modelMatrix[0][0]);
             glUniformMatrix4fv(viewLoc,  1, GL_FALSE, &view[0][0]);
             glUniformMatrix4fv(projLoc,  1, GL_FALSE, &projection[0][0]);
+            glUniformMatrix3fv(normalMatLoc, 1, GL_FALSE, &normalMatrix[0][0]);
+            glUniform3fv(lightDirLoc, 1, &lightDir[0]); 
 
-            DrawMesh(mesh, false, wireframe);
-            DrawMesh(mesh, true, wireframe);
+            DrawMesh(mesh, false, wireframeLoc);
+            DrawMesh(mesh, true, wireframeLoc);
         }
 
         glfwSwapBuffers(window);
